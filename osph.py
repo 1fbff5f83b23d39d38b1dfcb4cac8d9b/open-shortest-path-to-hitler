@@ -2,9 +2,12 @@ import urllib2, re, Queue, threading, time
 from urlparse import urljoin
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
-Q = Queue.Queue(75000)
+Q = Queue.Queue() #Sky's the limit! (Along with memory)
 baseurl = "https://en.wikipedia.org"
-beginning_link = "https://en.wikipedia.org/wiki/Charles_Whitman"
+#initial_link = "https://en.wikipedia.org/wiki/Prostate_cancer"
+#finish_link = "https://en.wikipedia.org/wiki/Adolf_Hitler"
+initial_link = "https://en.wikipedia.org/wiki/Barack_Obama"
+finish_link = "https://en.wikipedia.org/wiki/AT&T"
 
 #pathing works by making (origin, link) tuples and then searching through them once hitler is found, and linking tuples where (origin, link = origin, link)
 #link: link found in origin
@@ -17,7 +20,7 @@ beginning_link = "https://en.wikipedia.org/wiki/Charles_Whitman"
 def pretty_print(path):
 	global link_num
 	print "Checked "+str(link_num)+" links in "+str(int(time.time() - time_start))+" seconds"
-	print beginning_link.lower()
+	print initial_link.lower()
 	for tuple in path:
 		print tuple[1]
 	exit()
@@ -44,14 +47,13 @@ def get_links():
 			if link.has_key('href'):
 				link_num += 1
 				link = link['href']
-				link = link.lower()
 				if link.startswith("#"): continue
-				if "File:" in link or "Help:" in link: continue
+				if "file:" in link.lower() or "help:" in link.lower(): continue
 				if not link.startswith("http"):
-					if not link.startswith("/wiki/"): continue
+					if not link.lower().startswith("/wiki/"): continue
 					link = urljoin(baseurl, link)
 				
-				if link == "https://en.wikipedia.org/wiki/adolf_hitler" or link == "http://en.wikipedia.org/wiki/adolf_hitler":
+				if link.lower() == finish_link:
 					print "Hitler found! Now constructing path."
 					path.append((origin, link))
 					path_the_second = [path[-1]]
@@ -65,8 +67,8 @@ def get_links():
 global link_num
 link_num = 0
 time_start = time.time()
-Q.put((beginning_link, 0, beginning_link, []))
-for i in range(5000):
+Q.put((initial_link, 0, initial_link, []))
+while True:
 	if not Q.qsize(): break
 	print "Queue size: "+str(Q.qsize())
 	get_links()
