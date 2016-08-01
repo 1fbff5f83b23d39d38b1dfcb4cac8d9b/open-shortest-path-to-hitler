@@ -2,11 +2,12 @@ import urllib2, re, Queue, threading
 from urlparse import urljoin
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
-q = Queue.Queue(1000)
+Q = Queue.Queue(50000)
 baseurl = "https://en.wikipedia.org"
-beginning_link = "https://en.wikipedia.org/wiki/Auschwitz_concentration_camp"
+beginning_link = "https://en.wikipedia.org/wiki/Charles_Whitman"
 
 def pretty_print(path):
+	print "Checked "+str(Q.qsize())+" links."
 	print beginning_link.lower()
 	for tuple in path:
 		print tuple[1]
@@ -22,12 +23,13 @@ def get_path(origin, link, path_the_second, path):
 			get_path(tuple[0], tuple[1], path_the_second, path)
 			return
 
-def get_links(link, rec_depth, origin, path):
+def get_links():
+	link, rec_depth, origin, path = Q.get()
 	try:
+		print "Recursion depth: "+str(rec_depth)
 		path.append((origin, link))
 		origin = link
 		if rec_depth >= 2: return
-		link = link.lower()
 		page = urllib2.urlopen(link).read()
 		for link in BeautifulSoup(page, parseOnlyThese=SoupStrainer('a')):
 			if link.has_key('href'):
@@ -40,14 +42,16 @@ def get_links(link, rec_depth, origin, path):
 				
 				if link == "https://en.wikipedia.org/wiki/adolf_hitler" or link == "http://en.wikipedia.org/wiki/adolf_hitler":
 					path.append((origin, link))
-					for tuple in path:
-						if tuple[1] == "https://en.wikipedia.org/wiki/adolf_hitler" or tuple[1] == "http://en.wikipedia.org/wiki/adolf_hitler":
-							path_the_second = [tuple]
-							get_path(origin, link, path_the_second, path)
+					path_the_second = [path[-1]]
+					get_path(origin, link, path_the_second, path)
 					exit()
-				get_links(link, rec_depth+1, origin, path)
+				Q.put_nowait((link, rec_depth+1, origin, path))
 	except Exception as e:
 		print e
 		return
 		
-get_links(beginning_link, 0, beginning_link, [])
+Q.put((beginning_link, 0, beginning_link, []))
+for i in range(5000):
+	if not Q.qsize(): break
+	print "Queue size: "+str(Q.qsize())
+	get_links()
