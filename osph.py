@@ -1,11 +1,11 @@
-import urllib2, re, Queue, threading, time, collections
+import urllib2, re, Queue, threading, time
 from urlparse import urljoin
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
 Q = Queue.Queue() #Sky's the limit! (Along with memory)
 baseurl = "https://en.wikipedia.org"
-initial_link = "https://en.wikipedia.org/wiki/Charles_Whitman"
-finish_link = "https://en.wikipedia.org/wiki/Adolf_Hitler"
+initial_link = "https://en.wikipedia.org/wiki/Barack_Obama"
+finish_link = "https://en.wikipedia.org/wiki/Comcast"
 
 #pathing works by making (origin, link) tuples and then searching through them once hitler is found, and linking tuples where (origin, link = origin, link)
 #link: link found in origin
@@ -37,27 +37,25 @@ def get_links():
 	global link_num
 	link, rec_depth, origin, path = Q.get()
 	try:
-		print "Last indexed page: "+link
-		print "Recursion depth:   "+str(rec_depth) 
 		path.append((origin, link))
 		origin = link
-		if rec_depth >= 2: return #broken, I guess?
+		if rec_depth >= 2: return #broken, I guess? #nope
 		page = urllib2.urlopen(link).read()
 		for link in BeautifulSoup(page, parseOnlyThese=SoupStrainer('a')):
 			if link.has_key('href'):
 				link_num += 1
 				link = link['href']
-				if link in history: continue
 				if link.startswith("#"): continue
 				if "file:" in link.lower() or "help:" in link.lower(): continue
-				if "wikipedia:" in link.lower() or "category:" in link.lower(): continue
+				if "category:" in link.lower(): continue
 				if "special:" in link.lower() or "talk:" in link.lower(): continue
+				if "portal:" in link.lower(): continue
 				if not "wiki" in link.lower(): continue
 				if not link.startswith("http"):
 					if not link.lower().startswith("/wiki/"): continue
 					link = urljoin(baseurl, link)
 				if not "en.wikipedia.org" in link.lower(): continue
-				if link.lower() == finish_link:
+				if link.lower() == finish_link.lower():
 					print "Hitler found! Now constructing path."
 					path.append((origin, link))
 					path_the_second = [path[-1]]
@@ -71,10 +69,9 @@ def get_links():
 global link_num
 link_num = 0
 time_start = time.time()
-history = collections.deque([])
 Q.put((initial_link, 0, initial_link, []))
 while True:
 	if not Q.qsize(): break
 	print "Queue size: "+str(Q.qsize())
-	print "Indexed "+str(link_num)+" pages."
+	print "Indexed pages: "+str(link_num)
 	get_links()
