@@ -1,18 +1,19 @@
 import urllib2, re, Queue, threading
+from BeautifulSoup import BeautifulSoup, SoupStrainer
 
 q = Queue.Queue(1000)
 
 def get_links(link, rec_depth, path):
 	try:
-		path.append(link)
-		if link == "https://en.wikipedia.org/wiki/Adolf_Hitler" or link == "http://en.wikipedia.org/wiki/Adolf_Hitler": exit(path)
-		if rec_depth >= 4: return
+		#path.append(link)
+		if "hitler" in link.lower(): print link
+		if link.lower() == "https://en.wikipedia.org/wiki/adolf_hitler" or link.lower() == "http://en.wikipedia.org/wiki/adolf_hitler": exit(path)
+		if rec_depth >= 2: return
 		page = urllib2.urlopen(link).read()
-		urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', page)
-		for link in urls:
-			print link
-			get_links(link, rec_depth+1, path)
-	except Exception as e: 
+		for link in BeautifulSoup(page, parseOnlyThese=SoupStrainer('a')):
+			if link.has_key('href'):
+				get_links("https://en.wikipedia.org"+link['href'], rec_depth+1, path)
+	except Exception as e:
 		print e
 		return
 		
