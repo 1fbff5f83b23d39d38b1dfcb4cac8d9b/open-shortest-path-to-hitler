@@ -35,13 +35,10 @@ def get_path(origin, link, path_the_second, path):
 
 def get_links():
 	global link_num
-	link, rec_depth, origin, path, history = Q.get()
+	link, rec_depth, origin, path = Q.get()
 	try:
 		print "Last indexed page: "+link
 		print "Recursion depth:   "+str(rec_depth) 
-		if len(history) > 100:
-			for i in range(25):
-				history.popleft()
 		path.append((origin, link))
 		origin = link
 		if rec_depth >= 2: return #broken, I guess?
@@ -51,7 +48,6 @@ def get_links():
 				link_num += 1
 				link = link['href']
 				if link in history: continue
-				history.append(link)
 				if link.startswith("#"): continue
 				if "file:" in link.lower() or "help:" in link.lower(): continue
 				if "wikipedia:" in link.lower() or "category:" in link.lower(): continue
@@ -67,7 +63,7 @@ def get_links():
 					path_the_second = [path[-1]]
 					get_path(origin, link, path_the_second, path)
 					exit()
-				Q.put_nowait((link, rec_depth+1, origin, path, history)) #nowait so it doesn't hang up if it runs out of queue space
+				Q.put_nowait((link, rec_depth+1, origin, path)) #nowait so it doesn't hang up if it runs out of queue space
 	except Exception as e:
 		print e
 		return
@@ -76,7 +72,7 @@ global link_num
 link_num = 0
 time_start = time.time()
 history = collections.deque([])
-Q.put((initial_link, 0, initial_link, [], history))
+Q.put((initial_link, 0, initial_link, []))
 while True:
 	if not Q.qsize(): break
 	print "Queue size: "+str(Q.qsize())
