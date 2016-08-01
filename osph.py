@@ -1,13 +1,22 @@
-import urllib2, re, Queue, threading
+import urllib2, re, Queue, threading, time
 from urlparse import urljoin
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 
-Q = Queue.Queue(50000)
+Q = Queue.Queue(75000)
 baseurl = "https://en.wikipedia.org"
 beginning_link = "https://en.wikipedia.org/wiki/Charles_Whitman"
 
+#pathing works by making (origin, link) tuples and then searching through them once hitler is found, and linking tuples where (origin, link = origin, link)
+#link: link found in origin
+#origin: origin of found link 
+#(I hope this cleared everything up)
+#rec_depth: How many links deep in we are (does not work)
+#path: list of (origin, link) tuples
+#path_the_second: stupid name for the path taken
+
 def pretty_print(path):
-	print "Checked "+str(Q.qsize())+" links."
+	global link_num
+	print "Checked "+str(link_num)+" links in "+str(int(time.time() - time_start))+" seconds"
 	print beginning_link.lower()
 	for tuple in path:
 		print tuple[1]
@@ -24,32 +33,38 @@ def get_path(origin, link, path_the_second, path):
 			return
 
 def get_links():
+	global link_num
 	link, rec_depth, origin, path = Q.get()
 	try:
-		print "Recursion depth: "+str(rec_depth)
 		path.append((origin, link))
 		origin = link
-		if rec_depth >= 2: return
+		if rec_depth >= 2: return #broken, I guess?
 		page = urllib2.urlopen(link).read()
 		for link in BeautifulSoup(page, parseOnlyThese=SoupStrainer('a')):
 			if link.has_key('href'):
+				link_num += 1
 				link = link['href']
 				link = link.lower()
 				if link.startswith("#"): continue
-				if "file:" in link or "help:" in link: continue
+				if "File:" in link or "Help:" in link: continue
 				if not link.startswith("http"):
+					if not link.startswith("/wiki/"): continue
 					link = urljoin(baseurl, link)
 				
 				if link == "https://en.wikipedia.org/wiki/adolf_hitler" or link == "http://en.wikipedia.org/wiki/adolf_hitler":
+					print "Hitler found! Now constructing path."
 					path.append((origin, link))
 					path_the_second = [path[-1]]
 					get_path(origin, link, path_the_second, path)
 					exit()
-				Q.put_nowait((link, rec_depth+1, origin, path))
+				Q.put_nowait((link, rec_depth+1, origin, path)) #nowait so it doesn't hang up if it runs out of queue space
 	except Exception as e:
 		print e
 		return
 		
+global link_num
+link_num = 0
+time_start = time.time()
 Q.put((beginning_link, 0, beginning_link, []))
 for i in range(5000):
 	if not Q.qsize(): break
